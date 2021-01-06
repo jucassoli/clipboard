@@ -1,0 +1,892 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+    <title>Clipboard</title>
+    <script src="https://code.jquery.com/jquery-3.5.1.js"></script>
+    <script src="/resources/sockjs.js"></script>
+    <script src="/resources/stomp.js"></script>
+  </head>
+  <body>
+    <style>
+      .target {
+        border: solid 1px #aaa;
+        min-height: 200px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: 300ms all;
+        position: relative;
+      }
+
+      .inImg {
+        border: solid 1px #aaa;
+        min-height: 150px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: 300ms all;
+        background-size: cover;
+      }
+
+      .contain {
+        background-repeat: no-repeat;
+        position: relative;
+        z-index: 10;
+        top: 0px;
+        left: 0px;
+      }
+      textarea {
+        background-color: white;
+      }
+      .active {
+        box-shadow: 0px 0px 5px 5px rgba(0,0,255,.4);
+      }
+
+      .buttons-space {
+        padding-bottom: 5px;
+        display: block;
+      }
+
+      .upload-drop-zone {
+        height: 150px;
+        border-width: 2px;
+        margin-bottom: 20px;
+      }
+
+      /* skin.css Style*/
+      .upload-drop-zone {
+        color: #ccc;
+        border-style: dashed;
+        border-color: #ccc;
+        line-height: 150px;
+        text-align: center
+      }
+      .upload-drop-zone.drop {
+        color: #222;
+        border-color: #222;
+      }
+
+      .top-buffer { margin-top:5px; }
+
+      .element-insidecard-buffer { margin-top:5px; }
+
+    </style>
+
+    <div class="pricing-header px-3 py-3 pt-md-5 pb-md-4 mx-auto text-center">
+      <h1 class="display-4">Clipboard</h1>
+      <p class="lead">Transfer data across local network</p>
+    </div>
+
+    <div class="container">
+      <div class="row">
+        <div class="col">
+          <button id="connectToggleButton" class="btn btn-primary btn-block" type="button">Connect</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col">
+          <br>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-12">
+
+          <div id="accordion">
+            <div class="card">
+              <div class="card-header" id="headingOne">
+                <h5 class="mb-0">
+                  <button class="btn btn-link" data-toggle="collapse" data-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                    Outbound Information Area
+                  </button>
+                </h5>
+              </div>
+
+              <div id="collapseOne" class="collapse show" aria-labelledby="headingOne" data-parent="#accordion">
+                <div class="card-body">
+
+                  <div class="container">
+                    <div class="row">
+                      <div class="col-md-8">
+
+                        <div class="form-group shadow-textarea">
+                          <label>Text Area</label>
+                          <textarea class="form-control z-depth-1" 
+                            style="height: 150px;"
+                            id="inputArea" rows="3" placeholder="Paste or type your data here..."></textarea>
+                        </div>
+
+                      </div>
+                      <div class="col-md-4">
+
+                        <h5 class="card-title">Paste Image</h5>
+                        <div class="target contain"></div>
+
+                      </div>
+                    </div>
+                    <div class="row top-buffer">
+                      <div class="col-md-12">
+                        <div class="card">
+                          <div class="card-body">
+                            <!-- Standar Form -->
+                            <h5 class="card-title">Paste Files</h5>
+                            <form action="" method="post" enctype="multipart/form-data" id="js-upload-form">
+                              <div class="form-inline">
+                                <div class="form-group">
+                                  <input type="file" name="files[]" id="js-upload-files" multiple>
+                                </div>
+                              </div>
+              
+                              <!-- Drop Zone -->
+                                <div class="upload-drop-zone element-insidecard-buffer" id="drop-zone">
+                                  Drag and Drop files here
+                                </div>
+              
+                            </form>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="row top-buffer">
+                      <div class="col-md-12">
+                        <ul class="list-group" id="uploadFilesListGroup">
+                          <li class="list-group-item list-group-item-info">Files Selected to be Uploaded</li>
+                          <!--
+                          <li class="list-group-item list-group-item-light">
+                            <div class="container">
+
+                              <div class="row" style="padding-top: 5px;">
+              
+                                <div class="col-md-3">this-file-asdf.zip</div>
+                                <div class="col-md-8" style="margin-top: 10px;">
+                                  <div class="progress w-100 center-block">
+                                    <div class="progress-bar" role="progressbar" 
+                                      style="width: 25%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+                                  </div>
+                                </div>
+                                <div class="col-md-1">
+                                  <button id='deleteFileButton' type="button" class="btn btn-primary">
+                                    <svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-trash" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                      <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                                      <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4L4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                                    </svg>
+                                  </button>
+                                </div>
+              
+                              </div>
+
+                            </div>
+                          </li>
+                          -->
+
+                        </ul>
+                      </div>
+                    </div>
+              
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+          </div>
+        
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col">
+          <br>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col">
+          <div class="card bg-secondary text-white">
+            <div class="card-body">
+              <h5 class="card-title">Incoming Data Area</h5>
+              <div class="container">
+                <div class="row">
+                  <div class="col">
+                    <button id='copyTextButton' type="button" class="btn btn-primary">Copy</button>
+                    <button id='selectTextButton' type="button" class="btn btn-primary">Select</button>
+                    <button id='clearTextButton' type="button" class="btn btn-primary">Clear</button>
+                    <textarea class="form-control z-depth-1" style="margin-top: 10px; margin-bottom: 0px; height: 200px;"
+                      id="incomingTextArea" rows="3" placeholder="" readonly></textarea>
+
+                  </div>
+                </div>
+
+                <div class="row" style="padding-top: 15px;">
+                  <div class="col-md-12">
+
+                    <div class="buttons-space">
+                      <h6 class="card-subtitle mb-2 text-muted">Incoming Screenshots</h6>
+                      <button id='clearImgButton' type="button" class="btn btn-primary">Clear Image</button>
+                      <button id='clearImgLinksButton' type="button" class="btn btn-primary">Clear Image Links</button>
+                    </div>
+
+                    <!-- incoming Image -->
+                    <div class="inImg">
+                      <img id="incomingImage">
+                    </div>
+
+                  </div>
+                </div>
+
+                <div class="row top-buffer">
+                  <div class="col-md-12">
+                    <div id='list-group-download-imgs' class="list-group">
+                      <a href="#" class="list-group-item list-group-item-action list-group-item-info disabled">Download Files</a>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+
+    <script>
+      var stompClient;
+      var socket;
+      var clientId;
+
+      var recicleBin = '<svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-trash" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>                        <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4L4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>';
+
+      var filesToUpload = [];
+
+      function setButtonConnecting() {
+        $("#connectToggleButton").removeClass("btn-primary btn-warning").addClass("btn-info").prop('disabled', true)
+          .html('Connecting...');
+      }
+
+      function setButtonSuccessConnected() {
+        $("#connectToggleButton").removeClass("btn-info").addClass("btn-success").prop('disabled', false)
+          .html('Disconnect');
+      }
+
+      function setButtonFailedToConnect() {
+        $("#connectToggleButton").removeClass("btn-info btn-success").addClass("btn-warning").prop('disabled', false)
+          .html('Connect');
+      }
+
+      function setButtonReadyToConnect() {
+        $("#connectToggleButton").removeClass("btn-info btn-success btn-warning").addClass("btn-primary").prop('disabled', false)
+          .html('Connect');
+      }
+
+      function createDownloadFileAnchor(fileName, content) {
+        return $('<a></a>')
+            .attr("href", content)
+            .attr("target", '_blank').attr("download", fileName)
+            .append(fileName).addClass("list-group-item list-group-item-action");
+      }
+
+      function doConnect() {
+        setButtonConnecting();
+        console.log('Starting connection...');
+
+        socket = new SockJS('/mainwebsockets');
+        stompClient = Stomp.over(socket);
+        
+        // Remove console log debug function
+        stompClient.debug = () => {};
+
+        stompClient.connect({}, function(frame) {
+          setButtonSuccessConnected();
+          console.log('Stomp Client STATUS: ' + frame);
+
+          stompClient.subscribe('/topic/checkFile', function (message) {
+
+            let body = message.body;
+            let rawMessage = JSON.parse(body);
+
+            console.log("->[/topic/checkFile] Check File, start download");
+            console.log('-> Download Message:', rawMessage);
+
+            let notFound = true;
+            for(f of filesToUpload) {
+              if(f.fileId == rawMessage.data.fileId) {
+                notFound = false;
+                console.log('->[/topic/checkFile] Found file object: ' + f.fileName + ', start sending the file');
+                let downloadId = rawMessage.data.downloadId;
+
+                let confirmDownloadDataToSend = {
+                  sender: {
+                    id: clientId
+                  },
+                  contentType: 'confirm-download',
+                  fileId: f.fileId,
+                  downloadId
+                };
+                stompClient.send("/app/download-control", {}, JSON.stringify(confirmDownloadDataToSend));
+
+                new readAndSendFile(rawMessage.data.fileId, rawMessage.data.downloadId, f.file);
+              }
+            }
+
+            if(notFound) console.log('This file is not here.');
+
+            //readAndSendFile
+          });
+          
+          stompClient.subscribe('/topic/text', function (message) {
+            let body = message.body;
+            let rawMessage = JSON.parse(body);
+            console.log('Got incoming message: ', rawMessage.sender);
+
+            let senderId = rawMessage.sender.id;
+            //
+            // Choose what client to receive here ---------------------------------------------
+            //
+            if (senderId != clientId) {
+              let contentType = rawMessage.contentType;
+              console.log('Content Type: ', contentType);
+
+              let content = rawMessage.data;
+              if(contentType == "img") {
+                // IMAGE ------------------------------------------------------------------------
+                var img = document.createElement("img");
+                img.src = content;
+                var w = img.width;
+                var h = img.height;
+
+                $("#incomingImage").prop('src', content);
+
+                let fileName = 'screenshot-' + getFormattedTime() + '.png';
+
+                let anchorElement = createDownloadFileAnchor(fileName, content);
+                $('#list-group-download-imgs').append(anchorElement);
+
+              } else if(contentType == "upload-file") {
+                
+                console.log('----> CONTENT', content);
+                
+                let fileName = content.fileName;
+                let anchor = createDownloadFileAnchor(fileName, 'download/' + content.fileId);
+                $('#list-group-download-imgs').append(anchor);
+
+              } else {
+                $('#incomingTextArea').val(function (i, text) {
+                  return content;
+                });
+              }
+            } else {
+              console.log('Message not me!');
+            }
+          });
+
+        }, function(err) {
+          // Error callback
+          console.log('Stomp client Error: ', err);
+        }, function(event) {
+          // closeEventCallback
+          console.log('Stomp client Close Event: ', event);
+          setButtonFailedToConnect();
+        });
+      }
+      var choosedToDisconnect = false;
+
+      $("#connectToggleButton").click(function () {
+        // $("#serverIp").val() +
+        if(stompClient.connected) {
+          stompClient.disconnect();
+          socket.close();
+          choosedToDisconnect = true;
+        } else {
+          doConnect();
+          choosedToDisconnect = false;
+        }
+
+      });
+
+      /* CLEAR IMG BUTTON */
+      $("#clearImgButton").click(function () {
+        $("#incomingImage").prop('src', '');
+      });
+
+      $("#inputArea").on('keyup paste', function (e) {
+        clearTimeout($(this).data('timeout'));
+        $(this).data('timeout', setTimeout(function () {
+          //alert(e.target.value);
+
+          let areaData = e.target.value;
+          /*
+          $.post( "http://localhost:8080/receive?asdf=34534", '{ mydata: areaData }')
+            .done(function( data ) {
+              //alert( "Data Loaded: " + data );
+          });
+          */
+
+          let dataToSend = {
+            sender: {
+              id: clientId
+            },
+            contentType: 'text',
+            data: areaData
+          };
+
+          stompClient.send("/app/input", {}, JSON.stringify(dataToSend));
+        
+          /*
+          $.ajax({
+            type: 'POST',
+            dataType: 'json',
+            url: "http://localhost:8080/receive?U=2",
+            data: JSON.stringify({ mydata: areaData }),
+            contentType: 'application/json',
+            processData: false,
+            success: function(data, textStatus, jQxhr) {console.log('Data Post:' + data)},
+            error: function(jqXhr, textStatus, errorThrown) {console.log('Error:', textStatus)}
+          });
+          */
+
+        }, 200));
+
+      });
+
+      function uuidv4() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+      }
+
+      $(function() {
+        clientId = uuidv4();
+        console.log("Starting with ID: " + clientId);
+        doConnect();
+      });
+
+
+  // Created by STRd6
+  // MIT License
+  // jquery.paste_image_reader.js
+  (function ($) {
+    var defaults;
+    $.event.fix = (function (originalFix) {
+      return function (event) {
+        event = originalFix.apply(this, arguments);
+        if (event.type.indexOf("copy") === 0 || event.type.indexOf("paste") === 0) {
+          event.clipboardData = event.originalEvent.clipboardData;
+        }
+        return event;
+      };
+    })($.event.fix);
+    defaults = {
+      callback: $.noop,
+      matchType: /image.*/
+    };
+    return ($.fn.pasteImageReader = function (options) {
+      if (typeof options === "function") {
+        options = {
+          callback: options
+        };
+      }
+      options = $.extend({}, defaults, options);
+      return this.each(function () {
+        var $this, element;
+        element = this;
+        $this = $(this);
+        return $this.bind("paste", function (event) {
+          var clipboardData, found;
+          found = false;
+          clipboardData = event.clipboardData;
+          return Array.prototype.forEach.call(clipboardData.types, function (type, i) {
+            var file, reader;
+            if (found) {
+              return;
+            }
+            if (
+              type.match(options.matchType) ||
+              clipboardData.items[i].type.match(options.matchType)
+            ) {
+              file = clipboardData.items[i].getAsFile();
+              reader = new FileReader();
+              reader.onload = function (evt) {
+                return options.callback.call(element, {
+                  dataURL: evt.target.result,
+                  event: evt,
+                  file: file,
+                  name: file.name
+                });
+              };
+              reader.readAsDataURL(file);
+              return (found = true);
+            }
+          });
+        });
+      });
+    });
+  })(jQuery);
+
+  var dataURL, filename;
+  $("html").pasteImageReader(function (results) {
+    filename = results.filename, dataURL = results.dataURL;
+    //console.log(dataURL)
+    $data.text(dataURL);
+    $size.val(results.file.size);
+    $type.val(results.file.type);
+    let img = document.createElement("img");
+
+    sendImage(dataURL);
+    //$("#incomingImage").prop('src', dataURL); 
+
+    img.src = dataURL;
+    var w = img.width;
+    var h = img.height;
+    $width.val(w);
+    $height.val(h);
+    let element = $(".active");
+
+    element.removeClass("active");
+    
+    return element.css({
+        backgroundImage: "url(" + dataURL + ")"
+      })
+      .data({ width: w, height: h });
+
+  });
+
+  var $data, $size, $type, $width, $height;
+  $(function () {
+    $data = $(".data");
+    $size = $(".size");
+    $type = $(".type");
+    $width = $("#width");
+    $height = $("#height");
+    $(".target").on("click", function () {
+      var $this = $(this);
+      var bi = $this.css("background-image");
+      if (bi != "none") {
+        $data.text(bi.substr(4, bi.length - 6));
+      }
+
+      //$(".active").removeClass("active");
+      $this.toggleClass("active");
+
+      //$this.toggleClass("contain");
+
+      $width.val($this.data("width"));
+      $height.val($this.data("height"));
+      /*
+      if ($this.hasClass("contain")) {
+        $this.css({
+          width: $this.data("width"),
+          height: $this.data("height"),
+          "z-index": "10"
+        });
+      } else {
+        $this.css({ width: "", height: "", "z-index": "" });
+      }
+      */
+
+    });
+
+    $("#copyTextButton").click((event) => {
+      $("#incomingTextArea").select();
+      document.execCommand('copy');
+    });
+    $("#clearTextButton").click((event) => {
+      $("#incomingTextArea").val('');
+    });
+    $("#selectTextButton").click((event) => {
+      $("#incomingTextArea").select();
+    });
+  });
+
+  function getFormattedTime() {
+    let today = new Date();
+    let y = '' + today.getFullYear();
+    
+    // JavaScript months are 0-based.
+    let m = '' + (today.getMonth() + 1);
+    m = (m<2)? '0' + m : m;
+
+    let d = '' + today.getDate();
+    d = (d<2)? '0' + d : d;
+
+    let h = '' + today.getHours();
+    h = (h<2)? '0' + h : h;
+
+    let mi = '' + today.getMinutes();
+    mi = (mi<2)? '0' + mi : mi;
+
+    let s = '' + today.getSeconds();
+    s = (s<2)? '0' + s : s;
+
+    return y + m + d + "-" + h + mi + s;
+  }
+
+  function sendImage(data) {
+    let dataToSend = {
+      sender: {
+        id: clientId
+      },
+      contentType: 'img',
+      data: data
+    };
+
+    stompClient.send("/app/input", {}, JSON.stringify(dataToSend));
+  }
+
+  function sendFileToUpload(data) {
+    let dataToSend = {
+      sender: {
+        id: clientId
+      },
+      contentType: 'upload-file',
+      data: data
+    };
+
+    stompClient.send("/app/input", {}, JSON.stringify(dataToSend));
+  }
+
+  function copy(text) {
+    var t = document.getElementById("base64");
+    t.select();
+    try {
+      var successful = document.execCommand("copy");
+      var msg = successful ? "successfully" : "unsuccessfully";
+      alert("Base64 data coppied " + msg + " to clipboard");
+    } catch (err) {
+      alert("Unable to copy text");
+    }
+  }
+
+  var dropZone = document.getElementById('drop-zone');
+  var uploadForm = document.getElementById('js-upload-form');
+  var up;
+  var startUpload = function(files) {
+
+    if (files.items) {
+      // Use DataTransferItemList interface to access the file(s)
+      for (var i = 0; i < files.items.length; i++) {
+        // If dropped items aren't files, reject them
+        if (files.items[i].kind === 'file') {
+          var file = files.items[i].getAsFile();
+          console.log('... file[' + i + '].name = ' + file.name, file);
+          //readFile(file);
+          let uploadId = registerFile(file);
+          addFileItemOnUploadList(uploadId, file);
+        }
+      }
+    } else {
+      // Use DataTransfer interface to access the file(s)
+      for (var i = 0; i < files.files.length; i++) {
+        console.log('... file[' + i + '].name = ' + files.files[i].name, file);
+      }
+    }
+
+  }
+
+  function addFileItemOnUploadList(uploadId, file) {
+
+    let divClose = '</div>';
+    let liOpen = '<li class="list-group-item list-group-item-light" id="li_' + uploadId + '">';
+    let liClose = "</li>"
+    let rowOpen = '<div class="row" style="padding-top: 5px;">';
+    let colWithFileName = '<div class="col-md-3">' + file.name + '</div>';
+
+    let progressListGroup = '<ul class="list-group list-group-flush" id="progressListGroup_' + uploadId + '"></ul>'
+    let colWithProgressBar = '<div class="col-md-8" style="margin-top: 10px;" >'
+      + progressListGroup + divClose;
+
+    let colRemoveFileButton = '<div class="col-md-1">'
+      + '<button id="deleteFileButton_' + uploadId + '" type="button" class="btn btn-primary">'
+      + '<svg width="1em" height="1em" viewBox="0 0 16 16" class="bi bi-trash" fill="currentColor" xmlns="http://www.w3.org/2000/svg">'
+      + '<path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>'
+      + '<path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4L4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>'
+      + '</svg>'
+      + '</button></div>';
+
+    let block = liOpen + rowOpen 
+      + colWithFileName + colWithProgressBar + colRemoveFileButton 
+      + divClose + liClose;
+
+    $(block).appendTo( "#uploadFilesListGroup" );
+  }
+  
+  function startNewProgressBar(uploadId, downloadId) {
+    let progressBarBlock = '<div class="progress w-100 center-block">'
+      + '<div id="progressBar_' + uploadId + '_' + downloadId + '" class="progress-bar progress-bar-striped" role="progressbar" '
+      + 'style="width: 0%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div></div>';
+
+    let progressLi = '<li class="list-group-item" id="progressLi_' + downloadId + '">' + progressBarBlock + '</li>';
+
+    $(progressLi).appendTo('#progressListGroup_' + uploadId);
+  }
+
+  function updateUploadProgress(uploadId, downloadId, percent) {
+    let progress = $("#progressBar_" + uploadId + "_" + downloadId);
+
+    if(progress.length == 0) {
+      startNewProgressBar(uploadId, downloadId);
+      progress = $("#progressBar_" + uploadId + "_" + downloadId);
+    }
+    $("#progressBar_" + uploadId + "_" + downloadId).css("width", percent + "%").text(percent + " %");
+
+    if(percent == 100) {
+      setTimeout(() => {
+        let element = $('#progressLi_' + downloadId);
+        element.fadeOut(3000, function() {
+          element.remove();
+        });
+      }, 3000);
+    }
+  }
+
+  function registerFile(file) {
+    let fileId = uuidv4();
+    let upFile = {
+      fileId,
+      fileName: file.name,
+      size: file.size
+    };
+
+    sendFileToUpload(upFile);
+
+    let completeFile = {
+      ...upFile,
+      file
+    }
+
+    filesToUpload.push(completeFile);
+    return fileId;
+  }
+
+  uploadForm.addEventListener('submit', function(e) {
+        var uploadFiles = document.getElementById('js-upload-files').files;
+        e.preventDefault()
+
+        startUpload(uploadFiles)
+    });
+
+  dropZone.ondrop = function(e) {
+      e.preventDefault();
+      this.className = 'upload-drop-zone';
+
+      startUpload(e.dataTransfer)
+  }
+
+  dropZone.ondragover = function() {
+      this.className = 'upload-drop-zone drop';
+      return false;
+  }
+
+  dropZone.ondragleave = function() {
+      this.className = 'upload-drop-zone';
+      return false;
+  }
+
+  setInterval((timestamp) => {
+    if(!stompClient.connected && !choosedToDisconnect) {
+      doConnect();
+    }
+  }, 15000);
+
+  var totalSent = 0;
+
+  function readAndSendFile(fileId, downloadId, file) {
+    let totalSent = 0;
+    let totalFileSize = file.size;
+    console.log('--[ReadAndSend]- Sending file: ' + file.name + ', {downloadId:' + downloadId + '}, total size: ' + file.size);
+
+    let slice_size = 1000 * 1024 * 5;
+    //let slice_size = 150;
+    let start = 0;
+    let next_slice = slice_size;
+    let blob = file.slice(start, next_slice);
+    let times = 0;
+
+    let reader = new FileReader();
+    reader.onload = function(e) {
+
+      let contentData = e.target.result;
+      let base64Data = '';
+
+			//console.log('--[onload] File name: ' + file.name);
+      //console.log('--[onload] block data size: ', contentData.length);
+      //console.log('--[onload] downloadId: ' + downloadId);
+      //console.log('--[onload] sequence: ' + times);
+
+      let eof = false;
+      if(contentData == 'data:') {
+        eof = true;
+      } else {
+        base64Data =  contentData.split(";")[1].replace('base64,','')
+        totalSent += base64Data.length;
+        let decodedLength = Math.floor((3 * totalSent) / 4);
+        let percent = Math.round((decodedLength / totalFileSize) * 100);
+
+        console.log('--[download id:' + downloadId + ']- total sent: ' + totalSent 
+          + ' bytes, sequence number: ' + times + ', Progress:' + percent + '%');
+
+        updateUploadProgress(fileId, downloadId, percent);
+      }
+
+      let messageBlock = {
+        sender: {
+          id: clientId
+        },
+        downloadId,
+        eof,
+        sequence: times,
+        contentType: 'data-block',
+        data: base64Data
+      }
+
+      stompClient.send("/app/download-control", {}, JSON.stringify(messageBlock));
+
+      times++;
+    }
+
+    reader.onprogress = (event) => {
+      if (event.lengthComputable) {
+        //console.log('--[onprogress] Size Loaded: ' + event.loaded);
+      }
+    };
+
+    reader.onloadend = function (event) {
+
+      let readyState = event.target.readyState;
+      //console.log('--Enter Event [onloadend] readyState:' + readyState);
+
+      if (readyState == FileReader.DONE) {
+        if (event.target.result != "data:") {
+
+          //console.log('--[onloadend] Readed- start: ' + start + ', next_slice: ' + next_slice)
+
+          start = next_slice
+          next_slice = start + slice_size + 1;
+          blob = file.slice(start, next_slice);
+          reader.readAsDataURL(blob);
+        }
+        return;
+      }
+
+    };
+
+    reader.readAsDataURL(blob); // Start reading
+  }
+
+  </script>
+
+  </body>
+</html>
