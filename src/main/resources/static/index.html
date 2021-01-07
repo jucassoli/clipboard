@@ -787,7 +787,7 @@
     }
     $("#progressBar_" + uploadId + "_" + downloadId).css("width", percent + "%").text(percent + " %");
 
-    if(percent == 100) {
+    if(percent >= 100) {
       // Enable button uppon completion
       $('#deleteFileButton_' + uploadId).attr('disabled', false);
 
