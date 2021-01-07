@@ -765,6 +765,10 @@
   }
   
   function startNewProgressBar(uploadId, downloadId) {
+
+    // first disable the delete button to not have aaccidental removal
+    $('#deleteFileButton_' + uploadId).attr('disabled', true);
+
     let progressBarBlock = '<div class="progress w-100 center-block">'
       + '<div id="progressBar_' + uploadId + '_' + downloadId + '" class="progress-bar progress-bar-striped" role="progressbar" '
       + 'style="width: 0%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div></div>';
@@ -784,6 +788,9 @@
     $("#progressBar_" + uploadId + "_" + downloadId).css("width", percent + "%").text(percent + " %");
 
     if(percent == 100) {
+      // Enable button uppon completion
+      $('#deleteFileButton_' + uploadId).attr('disabled', false);
+
       setTimeout(() => {
         let element = $('#progressLi_' + downloadId);
         element.fadeOut(3000, function() {
